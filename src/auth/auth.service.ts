@@ -1,57 +1,59 @@
-import { Injectable } from '@nestjs/common';
-import { LoginDto } from './dtos/login.dto';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { CoreUserService } from 'src/core/core-user.service';
+import { JwtService } from '@nestjs/jwt';
 import { get } from 'lodash';
+import { ConfigService } from '@nestjs/config';
+import { compareSync } from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   public constructor(
-    
+    private readonly coreUserService: CoreUserService,
+    private jwtService: JwtService,
+    private configService: ConfigService,
   ){}
 
-  public validateUser(payload){
-    console.log("payload:", payload);
-    return true;
+  async login(user): Promise<{ accessToken: string }> {
+    const payload = { 
+      sub: get(user, 'id', null),
+      email: get(user, 'email', null),
+      role: get(user, 'role', null),
+    };
+    return {
+      accessToken: this.jwtService.sign(payload),
+    };
   }
 
-  public async login(credentials: LoginDto): Promise<any> {
-    try {
-      //const commandResponse = await this.coreService.login(credentials);
-      const commandResponse = {
-        data: {
-          user: {
-            status: true,
-            language: "es-ES",
-            address: "N/A",
-            phone: "123123",
-            last_name: "abalan",
-            first_name: "francisco",
-            description: "N/A",
-            timezone: "America/Santiago",
-            country: "CL",
-            avatar: "assets/images/default-avatar.png",
-            name: "N/A",
-            username: "francisco.abalan@agranimo.com",
-            email: "francisco.abalan@agranimo.com",
-            hashed_password: "$2b$10$YaDDFiX3YYiF5AeOAzLopuQp4nvSeR/dSLAd1NG2dOBvexesxVGue",
-            role: "ADMIN",
-            messages: [],
-            company_id: "5893cef01f7231eb6932fc11",
-            createdAt: "2021-09-29T10:20:07.635Z",
-            active: true,
-            generatedRandomKey: "G0_R888ZDVaMiKwedfxm5",
-            updatedAt: "2023-01-18T12:25:28.915Z",
-            id: "61543dd73388b2001184a8ae"
-          },
-          accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImZyYW5jaXNjby5hYmFsYW5AYWdyYW5pbW8uY29tIiwicm9sZSI6IkFETUlOIiwic3ViIjoiNjE1NDNkZDczMzg4YjIwMDExODRhOGFlIiwiaWF0IjoxNzA3OTM0Mzc3LCJleHAiOjE3MDg1MzkxNzd9.dTb1OJEn06dyw7sSp-pZjJiQpdfwxFN6qi4Wdvne3Q8"
-        },
-        error: null,
-        message: "Valid query",
-        success: true
-      }
-      return get(commandResponse, 'data', null);
-    } catch (error) {
-      console.log("Login Error=", error);
-      throw new Error('INVALID_AUTH_SERVICE_LOGIN');
+  async validateCredentials(email: string, password: string): Promise<any> {
+    const user = await this.coreUserService.findOne({email});
+    if (user && this.validPassword(user, password)) {
+      return user;
     }
+    return null;
+  }
+
+  private validPassword(user, password) {
+    const validPassword = compareSync(password, user.password);
+    return validPassword ? user : null;
+  }
+
+  async validateUser(email: string): Promise<any>{
+    const user = await this.coreUserService.findOne({email});
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return user;
+  }
+
+  async verify(token: string){
+    const decoded = this.jwtService.verify(token, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+    });
+    const email = get(decoded, 'email', null);
+    const user = await this.coreUserService.findOne({email});
+    if (!user) {
+      throw new Error('Unable to get the user from decoded Token.');
+    }
+    return user;
   }
 }
