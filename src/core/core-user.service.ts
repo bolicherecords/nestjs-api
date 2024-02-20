@@ -18,4 +18,15 @@ export class CoreUserService {
       return error;
     }
   }
+
+  public async createOne(userDto): Promise<any> {
+    try {
+      const result = await lastValueFrom(
+        this.coreClient.send<any>({ cmd: 'users/createOne' }, userDto),
+      );
+      return result;
+    } catch (error) {
+      return error;
+    }
+  }
 }

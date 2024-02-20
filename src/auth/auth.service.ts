@@ -13,15 +13,20 @@ export class AuthService {
     private configService: ConfigService,
   ){}
 
-  async login(user): Promise<{ accessToken: string }> {
+  async login(userDto): Promise<{ accessToken: string }> {
     const payload = { 
-      sub: get(user, 'id', null),
-      email: get(user, 'email', null),
-      role: get(user, 'role', null),
+      sub: get(userDto, 'id', null),
+      email: get(userDto, 'email', null),
+      role: get(userDto, 'role', null),
     };
     return {
       accessToken: this.jwtService.sign(payload),
     };
+  }
+
+  async signup(userDto): Promise<any> {
+    const user = await this.coreUserService.createOne(userDto);
+    return user;
   }
 
   async validateCredentials(email: string, password: string): Promise<any> {

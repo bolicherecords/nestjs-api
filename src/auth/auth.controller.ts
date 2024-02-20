@@ -1,10 +1,9 @@
-import { Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { get } from 'lodash';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Request } from 'express';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -22,13 +21,10 @@ export class AuthController {
     return await this.authService.login(user);
   }
 
-  @ApiResponse({ status: 201, description: 'The login has been successfully.' })
+  @ApiResponse({ status: 201, description: 'The signup has been successfully.' })
   @ApiResponse({ status: 401, description: 'Bad Request.' })
-  @UseGuards(LocalAuthGuard)
-  @Post('logon')
-  public async logon(@Req() req: Request): Promise<{ accessToken: string }> {
-    const user = get(req, 'user', null);
-    return await this.authService.login(user);
+  @Post('signup')
+  public async signup(@Body() params): Promise<any> {
+    return await this.authService.signup(params);
   }
-
 }
